@@ -24,6 +24,7 @@ output_price = {
 }
 
 def save_costs(costs):
+    os.makedirs(os.path.dirname(COSTS_PATH), exist_ok=True)
     with open(COSTS_PATH, "w") as f:
         json.dump(costs, f)
 

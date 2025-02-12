@@ -5,6 +5,7 @@ CONFIG_PATH = "json_files/config.json"
 
 # Funkcje do zapisu i odczytu konfiguracji
 def save_config(config):
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f)
 
