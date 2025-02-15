@@ -4,12 +4,12 @@ import logging
 
 def nebius_chat_completion(messages, model, api_key, context_length) -> str:
     if not api_key:
-        return "Brak klucza"
+        return "Missing key"
     
     last_messages = messages[-1-context_length:]
     
-    logging.info("Dostawca Nebius")
-    logging.info(f"Wiadomości wysyłane do modeli {model} :")
+    logging.info("Provider Nebius")
+    logging.info(f"Messages sent to {model} :")
     formatted_messages = []
     for msg in last_messages:
         formatted_message = {

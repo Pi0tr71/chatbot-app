@@ -2,7 +2,7 @@ import json
 import os
 HISTORY_PATH = "json_files/history.json"
 
-# Funkcje do zapisu i odczytu historii czatów
+# Functions for saving and reading chat history
 def save_history(history):
     os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
     with open(HISTORY_PATH, "w") as f:

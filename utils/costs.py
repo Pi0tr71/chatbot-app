@@ -39,7 +39,7 @@ def load_costs():
 
 
 def update_costs(model, input_tokens, output_tokens):
-    costs = load_costs()  # Wczytaj aktualne koszty
+    costs = load_costs()
     
     if model not in costs:
         costs[model] = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
