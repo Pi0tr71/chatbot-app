@@ -1,3 +1,4 @@
+![Podgląd Dashboardu](app_screen.png)
 ## Creating a Virtual Environment
 
 ### Python 3.12
