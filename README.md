@@ -1,6 +1,6 @@
 ## Creating a Virtual Environment
 
-### Python 3.8
+### Python 3.12
 ```sh
 python -m venv env
 source env/bin/activate  # Linux/macOS
