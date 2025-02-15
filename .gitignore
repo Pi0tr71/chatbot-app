@@ -1,0 +1,14 @@
+.streamlit/
+build/
+chatbot/
+dist/
+hooks/
+json_files/
+__pycache__/
+
+
+chatbot.spec
+icon.ico
+notes
+run_app.py
+run_app.spec
