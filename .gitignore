@@ -1,6 +1,6 @@
 .streamlit/
 build/
-chatbot/
+venv/
 dist/
 hooks/
 json_files/

@@ -1,131 +1,141 @@
 import streamlit as st
-from datetime import datetime
-import json
-
-from models.openai import openai_chat_completion, openai_chat_completion_title
-from models.nebius import nebius_chat_completion
-from models.sambanova import sambanova_chat_completion
-
-from utils.helpers import split_response, get_next_chat_name, check_existing
-from utils.costs import cost_cal
-from utils.history import save_history
-from utils.costs import update_costs
+from utils.history_config import ContentType
 
 
-def render_chat_interface(config, enc):
-     # CHAT INTERFACE
+def render_chat_interface(chat_manager):
     st.title("Chatbot")
-    st.write("Selected model: ", config["model"])
 
-    # Retrieving messages from the current chat
-    if st.session_state.current_chat:
-        messages = st.session_state.history[st.session_state.current_chat]["messages"]
-    else:
-        messages = []
+    current_provider, current_model_id = chat_manager.get_current_provider_and_model()
+    current_model = chat_manager.get_current_model_name()
+    st.write(f"Selected model: {current_provider} - {current_model}")
+
+    reasoning_enabled = st.toggle("Enable enhanced reasoning", value=False)
+    chat_manager.is_reasoning = reasoning_enabled
+
+    streaming_enabled = st.toggle("Enable streaming responses", value=True)
+
+    messages = chat_manager.get_current_chat_messages()
 
     # Displaying all messeges from chat
     for msg in messages:
-        with st.chat_message(msg["role"]):
-            if msg["role"] == "assistant":
-
-                think_parts, normal_part = split_response(msg["content"])
+        with st.chat_message(msg.role):
+            if msg.role == "assistant":
+                text_content = ""
+                for item in msg.content:
+                    if item.type == ContentType.TEXT:
+                        text_content += item.text
+                think_parts, normal_part = split_response(text_content)
 
                 for think_part in think_parts:
-                    st.markdown(f"<span style='color:gray; font-style:italic'>{think_part}</span>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<span style='color:gray; font-style:italic'>{think_part}</span>", unsafe_allow_html=True
+                    )
 
                 if normal_part:
                     st.write(normal_part)
 
-                st.markdown(f"<div style='text-align: right;'><i>Model: {msg["model"]}: Used tokens: {msg["tokens_used"]}, Price: {msg["cost"]:.6f}$</i></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='text-align: right;'><i>"
+                    f"model: {msg.provider} - {msg.model}: "
+                    f"throughput: {msg.throughput:.1f} t/s, "
+                    f"response time: {msg.response_time:.1f} s, "
+                    f"used tokens: {msg.tokens_used}, "
+                    f"cost: {msg.cost:.6f}$</i></div>",
+                    unsafe_allow_html=True,
+                )
             else:
-                st.write(msg["content"]) 
-                st.markdown(f"<div style='text-align: right;'><i>Used tokens: {msg["tokens_used"]}, Price: {msg["cost"]:.6f}$</i></div>", unsafe_allow_html=True)
+                text_content = ""
+                for item in msg.content:
+                    if item.type == ContentType.TEXT:
+                        text_content += item.text
+                st.write(text_content)
+                st.markdown(
+                    f"<div style='text-align: right;'><i>"
+                    f"used tokens: {msg.tokens_used}, "
+                    f"cost: {msg.cost:.6f}$</i></div>",
+                    unsafe_allow_html=True,
+                )
 
-
-    # text field for the user to enter a message
-
+    # User input handling
     user_input = st.chat_input("Enter your message...")
     if user_input:
-        input_tokens = len(enc.encode(user_input))
-        input_cost = cost_cal(config['model'], input_tokens, True)
+        # Create a placeholder for the user message that will be updated later
+        user_msg_container = st.container()
+        with user_msg_container:
+            with st.chat_message("user"):
+                st.write(user_input)
+                # Empty placeholder for token info that will be filled later
+                token_info_placeholder = st.empty()
 
-        messages.append({
-            "role": "user", 
-            "content": user_input,
-            "tokens_used": input_tokens,
-            "cost": input_cost,
-            "model": config["model"]
-        })
-        
-        
-        with st.chat_message("user"):
-            st.write(user_input)
-            st.markdown(f"<div style='text-align: right;'><i>Used tokens: {input_tokens}, Cost: {input_cost:.6f}$</i></div>", unsafe_allow_html=True)
-        
+        # Generate and display the response
         with st.spinner("Waiting for response..."):
-            try:
+            if streaming_enabled:
+                try:
+                    with st.chat_message("assistant"):
 
-                context_length = st.session_state.get('context_length', 0)
+                        response = st.write_stream()
 
-                if config['model'] in ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"]:
-                    response, input_tokens, output_tokens  = openai_chat_completion(messages, config['model'], config["api_keys"]["openai"], context_length*2)
+                except Exception as e:
+                    st.error(f"Error occurred while retrieving the response: {e}")
+            else:
+                try:
+                    # Send message to chat manager
+                    response_data = chat_manager.generate_response(user_input, streaming_enabled)
 
-                elif config['model'] in ["DeepSeek-R1-671B"]:
-                    response = nebius_chat_completion(messages, config['model'], config["api_keys"]["nebius"], context_length*2)
-                    output_tokens = len(enc.encode(response))
+                    # Update the token information in the placeholder
+                    if "usage" in response_data and "prompt_tokens" in response_data["usage"]:
+                        with token_info_placeholder:
+                            st.markdown(
+                                f"<div style='text-align: right;'><i>"
+                                f"used tokens: {response_data['usage']['prompt_tokens']}, "
+                                f"cost: {response_data["usage"]["input_cost"]:.6f}$</i></div>",
+                                unsafe_allow_html=True,
+                            )
 
-                elif config['model'] in ["DeepSeek-R1-Distill-70B", "Tulu-3-405B"]:
-                    response = sambanova_chat_completion(messages, config['model'], config["api_keys"]["sambanova"], context_length*2)
-                    output_tokens = len(enc.encode(response))
-                    
-                else: 
-                    response = "Jeszcze nie odsługiwany"
+                    # Display assistant response
+                    with st.chat_message("assistant"):
+                        think_parts, normal_part = split_response(response_data["content"])
 
-                input_cost = cost_cal(config['model'], input_tokens, True)
-                output_cost = cost_cal(config['model'], output_tokens, False)
+                        for think_part in think_parts:
+                            st.markdown(
+                                f"<span style='color:gray; font-style:italic'>{think_part}</span>",
+                                unsafe_allow_html=True,
+                            )
+
+                        if normal_part:
+                            st.write(normal_part)
+
+                        st.markdown(
+                            f"<div style='text-align: right;'><i>"
+                            f"model: {response_data['provider']} - {response_data['model']}: "
+                            f"throughput: {response_data['throughput']:.1f} t/s, "
+                            f"response time: {response_data['response_time']:.1f} s, "
+                            f"used tokens: {response_data['usage']['completion_tokens']}, "
+                            f"cost: {response_data['usage']['output_cost']:.6f}$</i></div>",
+                            unsafe_allow_html=True,
+                        )
+
+                except Exception as e:
+                    st.error(f"Error occurred while retrieving the response: {e}")
 
 
-                messages.append({
-                    "role": "assistant", 
-                    "content": response,
-                    "tokens_used": output_tokens,
-                    "cost": output_cost,
-                    "model": config["model"]
-                })
+def split_response(response):
+    """Split the response into thinking parts and normal parts."""
+    import re
 
-                think_parts, normal_part = split_response(response) 
-                with st.chat_message("assistant"):
-                    for think_part in think_parts:
-                        st.markdown(f"<span style='color:gray; font-style:italic'>{think_part}</span>", unsafe_allow_html=True)
-                    if normal_part:
-                        st.write(normal_part)
+    # Find all thinking sections denoted by <thinking> tags
+    thinking_pattern = r"<thinking>(.*?)</thinking>"
+    thinking_parts = re.findall(thinking_pattern, response, re.DOTALL)
 
-                    st.markdown(f"<div style='text-align: right;'><i>Model: {config["model"]}: Used tokens: {output_tokens}, Cost: {output_cost:.6f}$</i></div>", unsafe_allow_html=True)
-            
-            except Exception as e:
-                st.error(f"Error occurred while retrieving the response: {e}")
+    # Remove thinking sections from the response to get the normal part
+    normal_part = re.sub(thinking_pattern, "", response, flags=re.DOTALL).strip()
 
-        update_costs(config['model'], input_tokens, output_tokens)
+    return thinking_parts, normal_part
 
-        # Chat file updated with date of last activity
-        now = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        if st.session_state.current_chat:
-            st.session_state.history[st.session_state.current_chat]["messages"] = messages
-            st.session_state.history[st.session_state.current_chat]["last_active"] = now
-        else:
-            try:
-                chat_name = openai_chat_completion_title(messages, config["api_keys"]["openai"])
-                chat_name = check_existing(chat_name, st.session_state.history)
-                    
-            except: 
-                chat_name = get_next_chat_name(st.session_state.history)
 
-            st.session_state.history[chat_name] = {
-                "messages": messages,
-                "last_active": now
-            }
-            st.session_state.current_chat = chat_name
-            st.rerun()
-        save_history(st.session_state.history)
+# def split_response(response):
 
-            
+#     think_parts = re.findall(r"<think>(.*?)</think>", response, flags=re.DOTALL)
+#     normal_part = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
+
+#     return think_parts, normal_part
