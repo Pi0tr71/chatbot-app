@@ -3,34 +3,25 @@ import logging
 import tiktoken
 
 from ui.css import inject_css
-from ui.sidebar import render_side
+from ui.sidebar import render_sidebar
 from ui.chat_interface import render_chat_interface
 
-from utils.history import load_history
-from utils.config import load_config
+
+from chat_manager import ChatManager
 
 if __name__ == "__main__":
+    # Setup logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
-
-    enc = tiktoken.encoding_for_model("gpt-4")
-
+    # Apply custom CSS
     inject_css()
 
-    # Inicjalizacja historii oraz bieżącego czatu w sesji
-    if "history" not in st.session_state:
-        st.session_state.history = load_history()
-    if "current_chat" not in st.session_state:
-        st.session_state.current_chat = None
+    # Initialize the ChatManager
+    if "chat_manager" not in st.session_state:
+        st.session_state.chat_manager = ChatManager()
 
-    # Wczytanie konfiguracji
-    config = load_config()
+    # Render the sidebar
+    render_sidebar(st.session_state.chat_manager)
 
-    #PASEK BOCZNY
-    render_side(config)
-    render_chat_interface(config, enc)
-
-
+    # Render the chat interface
+    render_chat_interface(st.session_state.chat_manager)

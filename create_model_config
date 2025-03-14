@@ -1,0 +1,47 @@
+from utils.model_config import Config, Provider, FileType, ModelConfig, ProviderConfig
+import os
+
+
+def create():
+    print("=== Przykład 1: Tworzenie konfiguracji ===")
+    # Utwórz nową konfigurację
+    app_config = Config()
+
+    openai_config = ProviderConfig(
+        api_key="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",
+        base_url="https://api.openai.com/v1",
+    )
+    # Dodaj model do dostawcy SambaNova
+    openai_config.add_model(
+        "gpt-4o",
+        ModelConfig(
+            model_id="gpt-4o",
+            display_name="GPT-4o",
+            price_input_tokens=0.03,
+            price_output_tokens=0.06,
+            max_context_tokens=8192,
+            supported_file_types=[FileType.TEXT, FileType.IMAGE],
+            description="OpenAI's most capable model",
+        ),
+    )
+
+    # Dodaj dostawcę do konfiguracji aplikacji
+    app_config.add_provider(Provider.OPENAI, openai_config)
+
+    # Ustaw model domyślny dla SambaNova
+    app_config.default_model_by_provider[Provider.OPENAI] = "gpt-4o"
+
+    # Zapisz konfigurację do pliku
+    os.makedirs("json_files", exist_ok=True)
+    app_config.save_to_file()
+
+
+def load():
+    config = Config.load_from_file()
+    print(config.get_provider(Provider.OPENAI))
+    print(config.get_model(Provider.OPENAI, "gpt-4o"))
+
+
+if __name__ == "__main__":
+    create()
+    load()

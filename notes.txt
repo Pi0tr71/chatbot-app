@@ -1,0 +1,69 @@
+conda env export > environment.yml
+pip install nazwa_biblioteki
+conda install numpy pandas scikit-learn
+conda activate chatbots
+
+datas
+        ("chatbot/Lib/site-packages/altair/vegalite/v5/schema/vega-lite-schema.json","./altair/vegalite/v5/schema/"),
+        ("chatbot/Lib/site-packages/streamlit/static","./streamlit/static"),
+        ("chatbot/Lib/site-packages/streamlit/runtime","./streamlit/runtime")
+        
+chatbot/Scripts/activate
+pyinstaller --onefile --icon=icon.ico --additional-hooks-dir=hooks --hidden-import openai --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --hidden-import tiktoken run_app.py
+pyinstaller run_app.spec --clean
+
+
+ToDo
+- Możliwość zapytania o wiele rzeczy na raz w jednym lub kilku chatach async albo threads
+- wysyłanie zdjęć pdf i innych plików
+- chunkowanie odpowiedzi Mozna sprawdzic czy inni dostawcy tez maja
+
+Pydantic settings
+
+progress bar for cost limits
+
+Dolars to select model in sidebar
+
+
+tytuł zmienić w metodzie na developera (instrukcje)
+
+
+lista modeli dostępnych
+client = OpenAI(api_key=config["api_keys"]["openai"])
+models = client.models.list()
+st.write("Available models:", [m.id for m in models.data])
+
+
+
+ {
+          "type": "image_url",
+          "image_url": {
+            "url": f"data:image/jpeg;base64,{base64_image}"
+          }
+}
+
+
+
+Dodać do opcji w każdym chacie system prompt żeby np trzymał się tg że pisze prace licencjacką
+i możliwość włączenia histori cachowania na poczatku każdego czatu
+
+
+Dodatkowy plik z zapisem kosztów i liczby wysłanych requestów i tokenów do wykresów 
+Wykres requesty koszt per request bez uzględnienia wielkości zapytań i odpowiedzi
+Wykres Totalne koszty 
+
+Standard
+Answer the question directly.
+Do not return any
+preamble, explanation, or reasoning.
+Chain-of-Thought
+Think step by step to answer the following question.
+Return the answer at the end of the response after a
+separator
+Think step by
+each thinking
+answer at the
+Chain-of-Draft
+step, but only keep a minimum draft for
+step, with 5 words at most. Return the
+end of the response after a separator
