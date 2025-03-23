@@ -52,6 +52,9 @@ Dodatkowy plik z zapisem kosztów i liczby wysłanych requestów i tokenów do w
 Wykres requesty koszt per request bez uzględnienia wielkości zapytań i odpowiedzi
 Wykres Totalne koszty 
 
+- dodać radzenie sobie z błędami jesli api nie odpowie
+
+
 Standard
 Answer the question directly.
 Do not return any
