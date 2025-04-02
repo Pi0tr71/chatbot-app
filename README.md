@@ -1,4 +1,6 @@
+## View of Chat
 ![View of Dashboardu](img/app_screen.png)
+## View of Config
 ![View of Config](img/config.png)
 ## Creating a Virtual Environment
 
