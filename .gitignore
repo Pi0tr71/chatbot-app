@@ -5,7 +5,8 @@ dist/
 hooks/
 json_files/
 __pycache__/
-
+.pytest_cache/
+venv/
 
 chatbot.spec
 icon.ico
