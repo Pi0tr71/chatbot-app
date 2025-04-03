@@ -1,6 +1,11 @@
 import streamlit as st
-
+import base64
 from utils.history_config import ContentType
+
+
+def encode_file_to_base64(uploaded_file):
+    file_contents = uploaded_file.read()
+    return base64.b64encode(file_contents).decode("utf-8")
 
 
 def render_chat_interface(chat_manager):
@@ -107,16 +112,27 @@ def render_chat_interface(chat_manager):
 
     # User input handling
     user_input = st.chat_input("Enter your message...")
+
+    if current_provider == "openai":
+        uploaded_files = st.file_uploader("Choose a image file", accept_multiple_files=True)
+
     if user_input:
         with st.chat_message("user"):
             st.write(user_input)
 
         # Generate and display the response
         with st.spinner("Waiting for response..."):
+            if uploaded_files:
+                imgs = []
+                for uploaded_file in uploaded_files:
+                    file_format = uploaded_file.type
+                    base64_data = encode_file_to_base64(uploaded_file)
+                    imgs.append((base64_data, file_format))
+
             if streaming_enabled:
                 try:
                     with st.chat_message("assistant"):
-                        response_stream = chat_manager.generate_response_stream(user_input)
+                        response_stream = chat_manager.generate_response_stream(user_input, imgs)
                         response_content = ""
                         placeholder = st.empty()
                         is_error = False
@@ -152,7 +168,7 @@ def render_chat_interface(chat_manager):
                     st.error(f"Client error: {e}")
             else:
                 try:
-                    response_data = chat_manager.generate_response(user_input)
+                    response_data = chat_manager.generate_response(user_input, imgs)
 
                     # Check if the response is an error
                     if isinstance(response_data, str) and response_data.startswith(

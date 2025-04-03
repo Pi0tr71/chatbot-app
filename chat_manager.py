@@ -4,7 +4,7 @@ import time
 from typing import List, Optional, Tuple, Dict, Any, Union, Generator
 
 from utils.model_config import Config, Provider, ModelConfig
-from utils.history_config import ChatHistory, Chat, ContentType
+from utils.history_config import ChatHistory, Chat, ContentType, ImageUrlContent
 
 from models.openai_provider import OpenAIProvider
 from models.anthropic_provider import AnthropicProvider
@@ -183,7 +183,7 @@ class ChatManager:
             )
         return False
 
-    def generate_response(self, user_input):
+    def generate_response(self, user_input: str, imgs: List):
 
         # Create chat if new
         if self.current_chat_id is None:
@@ -202,16 +202,31 @@ class ChatManager:
         from utils.history_config import Message, MessageRole, TextContent
 
         try:
-            user_message = Message(
+            # user_message = Message(
+            #     role=MessageRole.USER,
+            #     content=[TextContent(text=user_input)],
+            # )
+
+            image_messages = []
+
+            for img, file_type in imgs:
+                image_messages.append(
+                    ImageUrlContent(
+                        type=ContentType.IMAGE_URL,
+                        image_url={"url": f"data:{file_type};base64,{img}", "detail": "high"},
+                    )
+                )
+
+            full_message = Message(
                 role=MessageRole.USER,
-                content=[TextContent(text=user_input)],
+                content=[TextContent(text=user_input)] + image_messages,
             )
 
         except Exception as e:
             logging.error(f"1. {e}")
             return
         context_messages = chat.messages[-self.context_length :] if self.context_length > 0 else []
-        context_messages.append(user_message)
+        context_messages.append(full_message)
 
         if self.current_provider not in self.providers:
             logging.error(f"Provider {self.current_provider} not initialized")
@@ -276,7 +291,7 @@ class ChatManager:
 
         return response
 
-    def generate_response_stream(self, user_input):
+    def generate_response_stream(self, user_input, imgs: List):
 
         if self.current_chat_id is None:
             existing_chat_names = [chat.chat_name for chat in self.history.chats.values()]
@@ -295,17 +310,33 @@ class ChatManager:
         from utils.history_config import Message, MessageRole, TextContent
 
         try:
-            user_message = Message(
+            # user_message = Message(
+            #     role=MessageRole.USER,
+            #     content=[TextContent(text=user_input)],
+            # )
+
+            image_messages = []
+
+            for img, file_type in imgs:
+                image_messages.append(
+                    ImageUrlContent(
+                        type=ContentType.IMAGE_URL,
+                        image_url={"url": f"data:{file_type};base64,{img}", "detail": "high"},
+                    )
+                )
+
+            full_message = Message(
                 role=MessageRole.USER,
-                content=[TextContent(text=user_input)],
+                content=[TextContent(text=user_input)] + image_messages,
             )
+
         except Exception as e:
             logging.error(f"Failed to create user message: {e}")
             yield f"Błąd: {str(e)}"
             return
 
         context_messages = chat.messages[-self.context_length :] if self.context_length > 0 else []
-        context_messages.append(user_message)
+        context_messages.append(full_message)
 
         if self.current_provider not in self.providers:
             logging.error(f"Provider {self.current_provider} not initialized")
