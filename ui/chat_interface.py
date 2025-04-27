@@ -8,6 +8,29 @@ def encode_file_to_base64(uploaded_file):
     return base64.b64encode(file_contents).decode("utf-8")
 
 
+def handle_uploaded_files(uploaded_files):
+    file_contents = []
+    for uploaded_file in uploaded_files:
+        file_format = uploaded_file.type  # Pobierz typ MIME
+        file_name = uploaded_file.name
+        base64_data = encode_file_to_base64(uploaded_file)
+
+        # Sprawdź, czy to obraz
+        if file_format.startswith("image/"):
+            file_contents.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{file_format};base64,{base64_data}", "detail": "high"},
+                }
+            )
+        else:
+            # Dla innych typów plików
+            file_contents.append(
+                {"type": "file", "file_url": {"name": file_name, "mime_type": file_format, "content": base64_data}}
+            )
+    return file_contents
+
+
 def render_chat_interface(chat_manager):
     st.title("Chatbot")
 
@@ -114,7 +137,11 @@ def render_chat_interface(chat_manager):
     user_input = st.chat_input("Enter your message...")
 
     if current_provider == "openai":
-        uploaded_files = st.file_uploader("Choose a image file", accept_multiple_files=True)
+        uploaded_files = st.file_uploader(
+            "Choose files to send",
+            accept_multiple_files=True,
+            type=["jpg", "jpeg", "png", "pdf", "csv", "txt", "doc", "docx", "xls", "xlsx", "json"],
+        )
 
     if user_input:
         with st.chat_message("user"):
@@ -122,17 +149,14 @@ def render_chat_interface(chat_manager):
 
         # Generate and display the response
         with st.spinner("Waiting for response..."):
+            file_contents = []
             if uploaded_files:
-                imgs = []
-                for uploaded_file in uploaded_files:
-                    file_format = uploaded_file.type
-                    base64_data = encode_file_to_base64(uploaded_file)
-                    imgs.append((base64_data, file_format))
+                file_contents = handle_uploaded_files(uploaded_files)
 
             if streaming_enabled:
                 try:
                     with st.chat_message("assistant"):
-                        response_stream = chat_manager.generate_response_stream(user_input, imgs)
+                        response_stream = chat_manager.generate_response_stream(user_input, file_contents)
                         response_content = ""
                         placeholder = st.empty()
                         is_error = False
@@ -168,7 +192,7 @@ def render_chat_interface(chat_manager):
                     st.error(f"Client error: {e}")
             else:
                 try:
-                    response_data = chat_manager.generate_response(user_input, imgs)
+                    response_data = chat_manager.generate_response(user_input, file_contents)
 
                     # Check if the response is an error
                     if isinstance(response_data, str) and response_data.startswith(

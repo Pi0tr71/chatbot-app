@@ -40,6 +40,18 @@ class OpenAIProvider:
                     image_url = content_item.image_url.get("url")
                     detail = content_item.image_url.get("detail", "auto")
                     content.append({"type": "image_url", "image_url": {"url": image_url, "detail": detail}})
+                elif content_item.type == ContentType.FILE:
+                    file_data = content_item.file_url
+                    content.append(
+                        {
+                            "type": "file",
+                            "file": {
+                                "name": file_data.get("name"),
+                                "mime_type": file_data.get("mime_type"),
+                                "content": file_data.get("content"),
+                            },
+                        }
+                    )
 
             # Handle single text content case (most common)
             if len(content) == 1 and content[0]["type"] == "text":

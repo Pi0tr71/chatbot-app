@@ -14,6 +14,7 @@ class ContentType(StrEnum):
 
     TEXT = "text"
     IMAGE_URL = "image_url"
+    FILE = "file"
 
 
 class ImageDetail(StrEnum):
@@ -37,11 +38,11 @@ class ImageUrlContent(BaseModel):
     image_url: Dict[str, Union[str, ImageDetail]]
 
 
-class FileContent(BaseModel):  # Maybe will be changed in future
+class FileContent(BaseModel):
     """Model for file content."""
 
-    type: Literal[ContentType.TEXT]
-    text: str
+    type: Literal[ContentType.FILE] = ContentType.FILE
+    file_url: Dict[str, str]
 
 
 # Union type for all possible content types

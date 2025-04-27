@@ -4,7 +4,7 @@ import time
 from typing import List, Optional, Tuple, Dict, Any, Union, Generator
 
 from utils.model_config import Config, Provider, ModelConfig
-from utils.history_config import ChatHistory, Chat, ContentType, ImageUrlContent
+from utils.history_config import ChatHistory, Chat, ContentType, ImageUrlContent, FileContent
 
 from models.openai_provider import OpenAIProvider
 from models.anthropic_provider import AnthropicProvider
@@ -183,7 +183,7 @@ class ChatManager:
             )
         return False
 
-    def generate_response(self, user_input: str, imgs: List):
+    def generate_response(self, user_input: str, files: List):
 
         # Create chat if new
         if self.current_chat_id is None:
@@ -207,19 +207,26 @@ class ChatManager:
             #     content=[TextContent(text=user_input)],
             # )
 
-            image_messages = []
-
-            for img, file_type in imgs:
-                image_messages.append(
-                    ImageUrlContent(
-                        type=ContentType.IMAGE_URL,
-                        image_url={"url": f"data:{file_type};base64,{img}", "detail": "high"},
+            file_contents = []
+            for file_data in files:
+                if file_data["type"] == "image_url":
+                    file_contents.append(
+                        ImageUrlContent(
+                            type=ContentType.IMAGE_URL,
+                            image_url=file_data["image_url"],
+                        )
                     )
-                )
+                elif file_data["type"] == "file":
+                    file_contents.append(
+                        FileContent(
+                            type=ContentType.FILE,
+                            file_url=file_data["file_url"],
+                        )
+                    )
 
             full_message = Message(
                 role=MessageRole.USER,
-                content=[TextContent(text=user_input)] + image_messages,
+                content=[TextContent(text=user_input)] + file_contents,
             )
 
         except Exception as e:
@@ -291,7 +298,7 @@ class ChatManager:
 
         return response
 
-    def generate_response_stream(self, user_input, imgs: List):
+    def generate_response_stream(self, user_input, files: List):
 
         if self.current_chat_id is None:
             existing_chat_names = [chat.chat_name for chat in self.history.chats.values()]
@@ -315,19 +322,26 @@ class ChatManager:
             #     content=[TextContent(text=user_input)],
             # )
 
-            image_messages = []
-
-            for img, file_type in imgs:
-                image_messages.append(
-                    ImageUrlContent(
-                        type=ContentType.IMAGE_URL,
-                        image_url={"url": f"data:{file_type};base64,{img}", "detail": "high"},
+            file_contents = []
+            for file_data in files:
+                if file_data["type"] == "image_url":
+                    file_contents.append(
+                        ImageUrlContent(
+                            type=ContentType.IMAGE_URL,
+                            image_url=file_data["image_url"],
+                        )
                     )
-                )
+                elif file_data["type"] == "file":
+                    file_contents.append(
+                        FileContent(
+                            type=ContentType.FILE,
+                            file_url=file_data["file_url"],
+                        )
+                    )
 
             full_message = Message(
                 role=MessageRole.USER,
-                content=[TextContent(text=user_input)] + image_messages,
+                content=[TextContent(text=user_input)] + file_contents,
             )
 
         except Exception as e:
